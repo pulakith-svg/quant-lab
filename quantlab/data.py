@@ -5,6 +5,19 @@ import numpy as np
 import pandas as pd
 
 UNIVERSE: dict[str, dict[str, str]] = {
+    "Indices": {
+        "S&P 500": "^GSPC", "Nasdaq 100": "^NDX", "Dow Jones": "^DJI",
+        "NIFTY 50": "^NSEI", "Bank Nifty": "^NSEBANK", "Sensex": "^BSESN",
+    },
+    "US Stocks": {
+        "Apple": "AAPL", "Microsoft": "MSFT", "Nvidia": "NVDA", "Amazon": "AMZN",
+        "Alphabet": "GOOGL", "Meta": "META", "Tesla": "TSLA", "JPMorgan": "JPM",
+    },
+    "India Stocks": {
+        "Reliance": "RELIANCE.NS", "HDFC Bank": "HDFCBANK.NS", "ICICI Bank": "ICICIBANK.NS",
+        "Infosys": "INFY.NS", "TCS": "TCS.NS", "SBI": "SBIN.NS", "Tata Motors": "TATAMOTORS.NS",
+        "Bharti Airtel": "BHARTIARTL.NS",
+    },
     "Forex": {
         "EUR/USD": "EURUSD=X", "GBP/USD": "GBPUSD=X", "USD/JPY": "JPY=X",
         "AUD/USD": "AUDUSD=X", "USD/CHF": "CHF=X", "USD/CAD": "CAD=X",

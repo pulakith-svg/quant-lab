@@ -11,6 +11,7 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 from quantlab import backtest as bt
+from quantlab import checklist as ck
 from quantlab import data, portfolio as pf, risk
 from quantlab import indicators as ind
 from quantlab import signals as sg
@@ -54,11 +55,15 @@ if not live:
     st.sidebar.warning("Live data unavailable — showing SYNTHETIC data.")
 st.sidebar.caption(f"{len(f):,} bars · {f.index[0].date()} → {f.index[-1].date()}")
 
-tabs = st.tabs(["🧭 Dashboard", "📊 Chart & Signals", "🌡 Volatility & Regime",
+tabs = st.tabs(["✅ Technical Checklist", "🧭 Dashboard", "📊 Chart & Signals", "🌡 Volatility & Regime",
                 "⚠️ Risk", "🧪 Backtest", "🌐 Cross-Asset", "🧮 Portfolio", "🎯 Position Sizer"])
 
-# ---------------- Dashboard ----------------
 with tabs[0]:
+    from quantlab.ui_checklist import render
+    render(ticker, get_ohlcv)
+
+# ---------------- Dashboard ----------------
+with tabs[1]:
     last = f.iloc[-1]
     score = sig["composite"].iloc[-1]
     c = st.columns(6)
@@ -103,7 +108,7 @@ with tabs[0]:
                      width="stretch", hide_index=True)
 
 # ---------------- Chart ----------------
-with tabs[1]:
+with tabs[2]:
     n = st.slider("Bars shown", 100, len(f), min(400, len(f)))
     v = f.tail(n)
     s = sig.tail(n)
@@ -132,7 +137,7 @@ with tabs[1]:
     st.dataframe(sig.tail(10).style.format("{:+.2f}"), width="stretch")
 
 # ---------------- Volatility & Regime ----------------
-with tabs[2]:
+with tabs[3]:
     r = f.ret.dropna()
     c1, c2 = st.columns(2)
     with c1:
@@ -167,7 +172,7 @@ with tabs[2]:
                  .style.format("{:.1%}"))
 
 # ---------------- Risk ----------------
-with tabs[3]:
+with tabs[4]:
     r = f.ret.dropna()
     lvl = st.select_slider("Confidence", [0.9, 0.95, 0.975, 0.99], value=0.95)
     vc = risk.var_cvar(r, lvl)
@@ -207,7 +212,7 @@ with tabs[3]:
                f"P(drawdown > 20%) = {((paths / np.maximum.accumulate(paths, axis=1)).min(axis=1) < 0.8).mean():.1%}")
 
 # ---------------- Backtest ----------------
-with tabs[4]:
+with tabs[5]:
     c = st.columns(5)
     tv = c[0].slider("Target vol", 0.05, 0.5, 0.15, 0.01)
     ml = c[1].slider("Max leverage", 0.5, 10.0, 3.0, 0.5)
@@ -249,7 +254,7 @@ with tabs[4]:
 # ---------------- Cross-asset ----------------
 default = ["EURUSD=X", "GBPUSD=X", "JPY=X", "DX-Y.NYB", "GC=F", "SI=F", "BTC-USD", "ETH-USD"]
 all_tickers = {t: n for d in data.UNIVERSE.values() for n, t in d.items()}
-with tabs[5]:
+with tabs[6]:
     sel = st.multiselect("Instruments", list(all_tickers), default,
                          format_func=lambda t: all_tickers[t])
     if len(sel) >= 2:
@@ -278,7 +283,7 @@ with tabs[5]:
         st.plotly_chart(fig, width="stretch")
 
 # ---------------- Portfolio ----------------
-with tabs[6]:
+with tabs[7]:
     sel = st.multiselect("Universe", list(all_tickers), ["EURUSD=X", "GC=F", "BTC-USD", "JPY=X", "ETH-USD"],
                          format_func=lambda t: all_tickers[t], key="pf")
     if len(sel) >= 2:
@@ -318,7 +323,7 @@ with tabs[6]:
         st.caption("Note: Max-Sharpe uses historical means, which are noisy — prefer risk-based weights.")
 
 # ---------------- Position sizer ----------------
-with tabs[7]:
+with tabs[8]:
     a_ = float(f.atr.iloc[-1]); px = float(f.Close.iloc[-1])
     c = st.columns(4)
     eq = c[0].number_input("Account equity ($)", 100.0, 1e9, 10000.0)
