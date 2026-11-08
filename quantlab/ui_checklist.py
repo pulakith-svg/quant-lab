@@ -8,8 +8,9 @@ import streamlit as st
 
 from . import checklist as ck
 
-T = "plotly_dark"
-COL = {"Bullish": "#26a69a", "Bearish": "#ef5350", "Neutral": "#9e9e9e"}
+from . import theme
+T = theme.TEMPLATE
+COL = {"Bullish": "#00e676", "Bearish": "#ff3b3b", "Neutral": "#9e9e9e"}
 ICON = {"Bullish": "🟢", "Bearish": "🔴", "Neutral": "⚪"}
 
 
@@ -20,7 +21,8 @@ def _run(ticker, _loader, with_context):
 
 def _gauge(value, title, color):
     fig = go.Figure(go.Indicator(mode="gauge+number", value=value, title={"text": title},
-                                 gauge={"axis": {"range": [0, 100]}, "bar": {"color": color}}))
+                                 gauge={"axis": {"range": [0, 100]}, "bar": {"color": color},
+                                        "bgcolor": theme.C["surface2"], "bordercolor": theme.C["line2"]}))
     fig.update_layout(template=T, height=210, margin=dict(t=40, b=0, l=20, r=20))
     return fig
 
@@ -28,25 +30,26 @@ def _gauge(value, title, color):
 def _chart(r):
     f = r["df"].tail(300)
     fig = go.Figure(go.Candlestick(x=f.index, open=f.Open, high=f.High, low=f.Low, close=f.Close,
-                                   name="Price"))
-    for n, cl in ((50, "#4fc3f7"), (200, "#ba68c8")):
+                                   name="Price", increasing_line_color=theme.C["bull"],
+                                   decreasing_line_color=theme.C["bear"]))
+    for n, cl in ((50, theme.C["info"]), (200, "#b388ff")):
         fig.add_trace(go.Scatter(x=f.index, y=r["df"].Close.rolling(n).mean().tail(300),
                                  name=f"MA{n}", line=dict(width=1, color=cl)))
     for l in r["sr"]["support"]:
-        fig.add_hline(l["price"], line=dict(color="#26a69a", dash="dot", width=1),
+        fig.add_hline(l["price"], line=dict(color="#00e676", dash="dot", width=1),
                       annotation_text=f"S {l['price']:.5g}", annotation_position="right")
     for l in r["sr"]["resistance"]:
-        fig.add_hline(l["price"], line=dict(color="#ef5350", dash="dot", width=1),
+        fig.add_hline(l["price"], line=dict(color="#ff3b3b", dash="dot", width=1),
                       annotation_text=f"R {l['price']:.5g}", annotation_position="right")
     for k, v in r["fib"].items():
-        fig.add_hline(v, line=dict(color="#ffd54f", width=0.6, dash="dash"),
+        fig.add_hline(v, line=dict(color=theme.C["accent"], width=0.6, dash="dash"),
                       annotation_text=f"Fib {k}", annotation_position="left")
     ch = r["channel"]
     idx = ch["index"]
     for off, nm in ((0, "Channel mid"), (ch["k"] * ch["sd"], "Channel up"), (-ch["k"] * ch["sd"], "Channel low")):
         fig.add_trace(go.Scatter(x=idx, y=ch["fit"] + off, name=nm,
                                  line=dict(color="#90a4ae", width=1, dash="dot" if off else "solid")))
-    for key, colr in (("up", "#26a69a"), ("down", "#ef5350")):
+    for key, colr in (("up", "#00e676"), ("down", "#ff3b3b")):
         t = r["trendlines"].get(key)
         if t:
             fig.add_trace(go.Scatter(x=[t["from"].date, r["df"].index[-1]],
@@ -59,7 +62,7 @@ def _chart(r):
         p = next((q for q in r["pivots"] if q.date == d), None)
         if p and d >= f.index[0]:
             fig.add_annotation(x=d, y=p.price, text=f"<b>{lab}</b>", showarrow=False,
-                               yshift=14 if p.kind == "H" else -14, font=dict(color="#ffd54f"))
+                               yshift=14 if p.kind == "H" else -14, font=dict(color=theme.C["accent"]))
     plan = r["plans"]["Swing (days–weeks)"]
     if plan["action"] in ("BUY", "SELL"):
         for k_, colr in (("entry", "#ffffff"), ("stop", "#ff1744"), ("t1", "#00e676"), ("t2", "#00e676")):
@@ -78,14 +81,15 @@ def _pf_chart(pf):
         for j in range(n):
             xs.append(i); ys.append(c["lo"] + j * pf["box"]); txt.append(c["type"])
     fig = go.Figure(go.Scatter(x=xs, y=ys, mode="text", text=txt,
-                               textfont=dict(color=["#26a69a" if t == "X" else "#ef5350" for t in txt])))
+                               textfont=dict(color=["#00e676" if t == "X" else "#ff3b3b" for t in txt])))
     fig.update_layout(template=T, height=380, title="Point & Figure (3-box reversal)",
                       xaxis_title="column", margin=dict(t=40))
     return fig
 
 
 def render(ticker: str, loader):
-    st.subheader(f"Technical Checklist — {ticker}")
+    theme.panel(f"Technical checklist — {ticker}",
+                "Market · trend · levels · volume · patterns · oscillators · Elliott · cycles · P&F → scores and trade plan")
     ctx = st.checkbox("Include market & sector context (slower: downloads benchmark + sectors)", True)
     with st.spinner("Running the full technical checklist…"):
         r = _run(ticker, loader, ctx)
@@ -93,15 +97,18 @@ def render(ticker: str, loader):
         st.warning("Live data unavailable — results below use SYNTHETIC data.")
 
     c = st.columns([1, 1, 1.4])
-    c[0].plotly_chart(_gauge(r["buy_score"], "BUY score", "#26a69a"), width="stretch")
-    c[1].plotly_chart(_gauge(r["sell_score"], "SELL score", "#ef5350"), width="stretch")
+    c[0].plotly_chart(_gauge(r["buy_score"], "BUY SCORE", theme.C["bull"]), width="stretch")
+    c[1].plotly_chart(_gauge(r["sell_score"], "SELL SCORE", theme.C["bear"]), width="stretch")
     with c[2]:
-        st.markdown(f"### Verdict: **{r['bias']}**")
-        st.markdown(f"Market: **{r['market']}** · Price **{ck.fmt(r['price'])}**")
-        st.markdown(f"Outlook next several months: **{r['outlook']}**")
-        st.markdown(f"Net score **{r['net']:+.2f}** (−1 strong sell … +1 strong buy)")
+        vcol = theme.C["bull"] if r["bias"] == "BUY" else theme.C["bear"] if r["bias"] == "SELL" else theme.C["warn"]
+        st.markdown(f"""<div class="panel" style="margin-top:0"><div class="ph"><div class="t">Desk verdict</div></div>
+<div class="pb"><div style="font-size:26px;font-weight:700;color:{vcol};letter-spacing:.06em">{r['bias']}</div>
+MARKET <b>{r['market']}</b> · LAST <b>{ck.fmt(r['price'])}</b><br>
+OUTLOOK (NEXT MONTHS) <b>{r['outlook']}</b><br>
+NET SCORE <b>{r['net']:+.2f}</b> <span style="font-size:10.5px">(−1 strong sell … +1 strong buy)</span></div></div>""",
+                    unsafe_allow_html=True)
 
-    st.markdown("#### Trade plans")
+    theme.panel("Trade plans", "Intraday (hourly) · swing (daily) · position (weekly) — entry / stop / targets")
     rows = []
     for k, p in r["plans"].items():
         rows.append({"Horizon": k, "Action": p["action"],
@@ -118,13 +125,16 @@ def render(ticker: str, loader):
 
     st.plotly_chart(_chart(r), width="stretch")
 
-    st.markdown("#### The checklist")
+    theme.panel("The checklist", "Every question answered from the data — click a row to expand")
     cur = None
     for it in r["items"]:
         if it.section != cur:
             cur = it.section
-            st.markdown(f"**— {cur} —**")
+            st.markdown(f'<div style="color:{theme.C["accent"]};font-size:11px;letter-spacing:.14em;'
+                        f'text-transform:uppercase;margin:14px 0 4px;border-bottom:1px solid {theme.C["line"]};'
+                        f'padding-bottom:4px">{cur}</div>', unsafe_allow_html=True)
         with st.expander(f"{ICON[it.verdict]} {it.question}", expanded=it.section == "Decision"):
+            st.markdown(theme.pill(it.verdict.upper(), it.verdict), unsafe_allow_html=True)
             st.markdown(it.answer)
             if it.weight:
                 st.caption(f"Verdict: {it.verdict} · score {it.score:+.2f} · weight {it.weight:g}")
@@ -139,7 +149,7 @@ def render(ticker: str, loader):
         sc = pd.DataFrame([{"Factor": i.question[:55], "Score": i.score * i.weight}
                            for i in r["items"] if i.weight > 0])
         fig = go.Figure(go.Bar(x=sc.Score, y=sc.Factor, orientation="h",
-                               marker_color=np.where(sc.Score > 0, "#26a69a", "#ef5350")))
+                               marker_color=np.where(sc.Score > 0, "#00e676", "#ff3b3b")))
         fig.update_layout(template=T, height=380, title="Weighted evidence", margin=dict(t=40, l=10),
                           yaxis=dict(autorange="reversed", tickfont=dict(size=9)))
         st.plotly_chart(fig, width="stretch")

@@ -16,8 +16,7 @@ from quantlab import data, portfolio as pf, risk
 from quantlab import indicators as ind
 from quantlab import signals as sg
 
-st.set_page_config(page_title="QuantLab", page_icon="📈", layout="wide")
-TEMPLATE = "plotly_dark"
+st.set_page_config(page_title="Quant Lab", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -34,15 +33,17 @@ def pct(x): return f"{x:.2%}" if pd.notna(x) else "—"
 def num(x, d=2): return f"{x:,.{d}f}" if pd.notna(x) else "—"
 
 
-# ---------------- Sidebar ----------------
-st.sidebar.title("📈 QuantLab")
-cls = st.sidebar.selectbox("Asset class", list(data.UNIVERSE))
-name = st.sidebar.selectbox("Instrument", list(data.UNIVERSE[cls]),
-                            index=0 if cls != "Metals" else 0)
-custom = st.sidebar.text_input("…or any Yahoo ticker", "")
-ticker = custom.strip() or data.UNIVERSE[cls][name]
-interval = st.sidebar.selectbox("Interval", ["1d", "1h", "1wk"])
-period = st.sidebar.selectbox("History", ["1y", "2y", "3y", "5y", "10y", "max"], index=2)
+# ---------------- Controls (top strip, Nifty-Desk style) ----------------
+from quantlab import theme
+TEMPLATE = theme.TEMPLATE
+_hdr = st.container()
+_c = st.columns([1.1, 1.4, 1.2, 0.7, 0.7])
+cls = _c[0].selectbox("Asset class", list(data.UNIVERSE), index=list(data.UNIVERSE).index("Indices"))
+name = _c[1].selectbox("Instrument", list(data.UNIVERSE[cls]))
+custom = _c[2].text_input("Any Yahoo ticker", "", placeholder="e.g. TCS.NS, NVDA, GC=F")
+interval = _c[3].selectbox("Interval", ["1d", "1h", "1wk"])
+period = _c[4].selectbox("History", ["1y", "2y", "3y", "5y", "10y", "max"], index=2)
+ticker = custom.strip().upper() or data.UNIVERSE[cls][name]
 if interval == "1h" and period not in ("1y", "2y"):
     period = "2y"
 ppy = data.periods_per_year(ticker, interval)
@@ -51,12 +52,14 @@ raw, live = get_ohlcv(ticker, period, interval)
 f = ind.add_all(raw)
 sig = sg.composite(f)
 reg = sg.regime(f)
+_px = f["Close"].iloc[-1]
+with _hdr:
+    theme.apply(live, ticker, f"{_px:,.5f}" if _px < 10 else f"{_px:,.2f}", str(f.index[-1].date()))
 if not live:
-    st.sidebar.warning("Live data unavailable — showing SYNTHETIC data.")
-st.sidebar.caption(f"{len(f):,} bars · {f.index[0].date()} → {f.index[-1].date()}")
+    st.warning("Live data unavailable — showing SYNTHETIC data.")
 
-tabs = st.tabs(["✅ Technical Checklist", "🧭 Dashboard", "📊 Chart & Signals", "🌡 Volatility & Regime",
-                "⚠️ Risk", "🧪 Backtest", "🌐 Cross-Asset", "🧮 Portfolio", "🎯 Position Sizer"])
+tabs = st.tabs(["✓ Checklist", "Dashboard", "Chart & Signals", "Volatility & Regime",
+                "Risk", "Backtest", "Cross-Asset", "Portfolio", "Position Sizer"])
 
 with tabs[0]:
     from quantlab.ui_checklist import render
@@ -79,7 +82,7 @@ with tabs[1]:
     st.subheader("Signal components (latest)")
     comp = sig.iloc[-1].drop("composite")
     fig = go.Figure(go.Bar(x=comp.values, y=comp.index, orientation="h",
-                           marker_color=["#26a69a" if v > 0 else "#ef5350" for v in comp]))
+                           marker_color=["#00e676" if v > 0 else "#ff3b3b" for v in comp]))
     fig.update_layout(template=TEMPLATE, height=260, xaxis_range=[-1, 1], margin=dict(t=10))
     st.plotly_chart(fig, width="stretch")
 
@@ -127,7 +130,7 @@ with tabs[2]:
     fig.add_trace(go.Scatter(x=v.index, y=v.rsi, name="RSI", line=dict(color="#90caf9")), 2, 1)
     fig.add_hline(70, line_dash="dot", row=2, col=1); fig.add_hline(30, line_dash="dot", row=2, col=1)
     fig.add_trace(go.Bar(x=v.index, y=v["hist"], name="MACD hist",
-                         marker_color=np.where(v["hist"] > 0, "#26a69a", "#ef5350")), 3, 1)
+                         marker_color=np.where(v["hist"] > 0, "#00e676", "#ff3b3b")), 3, 1)
     fig.add_trace(go.Scatter(x=v.index, y=v.macd, name="MACD", line=dict(width=1)), 3, 1)
     fig.add_trace(go.Scatter(x=s.index, y=s.composite, name="Composite", fill="tozeroy",
                              line=dict(color="#ffd54f")), 4, 1)
@@ -196,7 +199,7 @@ with tabs[4]:
         st.plotly_chart(fig, width="stretch")
     with c2:
         dd = risk.drawdown(np.exp(r.cumsum()))
-        fig = go.Figure(go.Scatter(x=dd.index, y=dd, fill="tozeroy", line_color="#ef5350"))
+        fig = go.Figure(go.Scatter(x=dd.index, y=dd, fill="tozeroy", line_color="#ff3b3b"))
         fig.update_layout(template=TEMPLATE, height=380, title="Underwater curve", yaxis_tickformat=".0%")
         st.plotly_chart(fig, width="stretch")
     st.subheader("Monte Carlo (block bootstrap)")
@@ -343,5 +346,5 @@ with tabs[8]:
     c[4].metric("Notional / Leverage", f"${ps['notional']:,.0f}", f"{ps['leverage']:.1f}x")
     st.caption(f"ATR(14) = {a_:.5f}. Contract size = {contract:g}. Risk amount = ${ps['risk_amount']:,.2f}.")
 
-st.sidebar.markdown("---")
-st.sidebar.caption("Research tool only — not investment advice.")
+st.markdown('<div style="border-top:1px solid #2a2a2a;margin-top:30px;padding-top:12px;color:#9a8f7a;font-size:11px">'
+            "SRC: Yahoo Finance (delayed EOD/intraday) · indicators computed locally · unofficial feed — verify against your broker terminal</div>", unsafe_allow_html=True)
