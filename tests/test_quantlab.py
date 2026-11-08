@@ -95,3 +95,22 @@ def test_checklist_end_to_end():
                 assert p["stop"] < p["entry"] < p["t1"]
             if p["action"] == "SELL":
                 assert p["stop"] > p["entry"] > p["t1"]
+
+
+def test_orderflow_auction():
+    from quantlab import orderflow as of
+    df = of.estimate_delta(of._synthetic_intraday("X"))
+    assert np.allclose(df.buy + df.sell, df.Volume)
+    s = of.sessions(df)[-1]
+    vp = of.volume_profile(s)
+    assert vp["val"] <= vp["poc"] <= vp["vah"]
+    inside = vp["volume"][(vp["levels"] >= vp["val"]) & (vp["levels"] <= vp["vah"])].sum()
+    assert inside >= 0.69 * vp["volume"].sum()
+    tpo = of.tpo_profile(s)
+    assert tpo["ib_low"] <= tpo["ib_high"] and tpo["counts"].max() >= 1
+    a = of.auction_read(df)
+    assert -1 <= a["score"] <= 1 and a["open_type"]
+    fp = of.footprint(s.tail(60), "15min")
+    assert np.isclose(fp.total.sum(), s.tail(60).Volume.sum())
+    v = of.vwap(s)
+    assert (v.l2 <= v.vwap).all() and (v.vwap <= v.u2).all()

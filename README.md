@@ -14,6 +14,7 @@ falls back to clearly-flagged synthetic data so every feature still runs.
 | Tab | What it does |
 |---|---|
 | **Technical Checklist** | Answers the full technical-analysis checklist automatically: market & sector direction, weekly/monthly charts, major/intermediate/minor trends, support/resistance, trendlines & channels, volume confirmation (OBV, up/down volume), 33/50/66% and Fibonacci retracements & projections, reversal & continuation patterns (double tops/bottoms, head & shoulders, triangles, rectangles, flags) with price objectives, moving-average direction, overbought/oversold oscillators, RSI/MACD divergences, contrary-opinion extremes, Elliott 3/5-wave counts, dominant cycle top/bottom timing, computer trend, point & figure and candlestick patterns. Outputs BUY/SELL scores (0-100), outlook for the next months, and entry / stop / targets for **intraday, swing and position** trades |
+| **Order Flow & Auction** | LTP, session VWAP with ±1σ/±2σ bands, delta per bar and cumulative delta (CVD), footprint (bid × ask per price, stacked 3:1 imbalances), large prints / time & sales, absorption, initiative buying/selling and CVD divergence; volume profile (POC, VAH/VAL, HVN/LVN, P/b/D shape) and TPO market profile (letters, initial balance, range extension, single prints, poor highs/lows); auction-market read: open type, open vs prior value, day type, value migration, balance vs imbalance, 80% rule, naked POCs, and an intraday auction plan. Crypto uses real Binance taker-buy delta and trades; other markets estimate delta from 1-minute bars |
 | Dashboard | Live signal, regime, EWMA vol, RSI, Hurst exponent; one-click scanner ranking the full universe |
 | Chart & Signals | Candles, EMA 20/50/200, Bollinger, RSI, MACD, composite signal |
 | Volatility & Regime | Realised vs EWMA (RiskMetrics) vol, GARCH(1,1) MLE fit & forecast, OU half-life, regime map |
@@ -38,6 +39,7 @@ quantlab/risk.py        metrics, VaR/ES, PSR, Kelly, sizing, Monte Carlo
 quantlab/backtest.py    vectorised backtester + walk-forward
 quantlab/portfolio.py   covariance shrinkage, optimisers, frontier
 quantlab/patterns.py    swings, S/R, trendlines, chart & candle patterns, P&F, Elliott, cycles
+quantlab/orderflow.py   order flow, VWAP, volume/TPO profile, auction market theory
 quantlab/checklist.py   the technical checklist engine, scores and trade plans
 quantlab/ui_checklist.py  Streamlit view of the checklist
 tests/                  pytest suite (incl. a no-look-ahead test)
